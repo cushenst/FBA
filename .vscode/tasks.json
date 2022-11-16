@@ -1,0 +1,13 @@
+{
+  "tasks": [
+    {
+      "type": "docker-run",
+      "label": "docker-run: debug",
+      "dependsOn": ["docker-build"],
+      "python": {
+        "args": ["python3", "client.py", "0.0.0.0"],
+        "file": "manage.py"
+      }
+    }
+  ]
+}

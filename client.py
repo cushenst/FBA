@@ -7,7 +7,8 @@ import time
 import uuid
 import json
 
-NEEDED = 5
+TOTAL_NEEDED = 3
+NEEDED = 0.5
 
 
 class Client:
@@ -20,6 +21,7 @@ class Client:
         self.thread = threading.Thread(target=self.start_tcp, args=(self.is_ready, self.queue, self.kill))
         self.thread.start()
         self.is_ready.wait()
+        self.finalized = []
         self.neighbours = {}
         self.agree = {}
         self.connected = self.get_connected(neighbours)
@@ -42,8 +44,13 @@ class Client:
             message = json.loads(message.decode())
             if message == "stop\n":
                 self.kill.set()
-            elif message["type"] == "3":
+            elif message["type"] == "4":
                 print(self.agree)
+            elif message["type"] == "5":
+                print(self.finalized)
+            elif message["type"] == "3":
+                if message["id"] not in self.finalized:
+                    self.send_finalize(message["id"])
             elif message["type"] == "2":
                 if message["id"] not in self.agree.keys():
                     self.question(message["message"], message["id"])
@@ -93,7 +100,6 @@ class Client:
         self.broadcast(self.agreement, {"msg_id": msg_id, "message": message})
        
             
-
     def agreement(self, addr, msg_id, message):
         agree = False
         if self.addr in self.agree[msg_id]:
@@ -101,6 +107,21 @@ class Client:
         message = {"type": "2", "message": message, "addr": self.addr, "agree": self.agree[msg_id], "id": msg_id}
         message = json.dumps(message).encode()
         self.send_tcp(addr, message)
+        if len(self.agree[msg_id])> NEEDED*len(self.neighbours) and len(self.agree[msg_id]) > TOTAL_NEEDED and msg_id not in self.finalized:
+            self.agreement_reached(msg_id)
+
+    def agreement_reached(self, msg_id):
+        self.finalize(msg_id)
+        self.broadcast(self.send_finalize, {"msg_id": msg_id})
+    
+    def send_finalize(self, addr, msg_id):
+        message = {"type": "3", "id": msg_id}
+        message = json.dumps(message).encode()
+        self.send_tcp(addr, message)
+
+    def finalize(self, msg_id):
+        print(f"finalize: {msg_id}")
+        self.finalized.append(msg_id)
 
     def broadcast(self, send_function, params):
         for peer in list(self.neighbours.keys()):
@@ -140,6 +161,7 @@ class Client:
             s.connect((server[0], int(server[1])))
             s.sendall(message)
             s.close()
+            time.sleep(0.1)
 
     def start_tcp(self, is_ready, msg_queue, die):
         with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:

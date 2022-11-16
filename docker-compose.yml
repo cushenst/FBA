@@ -1,0 +1,22 @@
+version: "3.9"
+services:
+  server:
+    image: fba
+    environment:
+      LOCAL_IP: 10.5.0.6
+  client1:
+    image: fba
+    environment:
+      LOCAL_IP: 10.5.0.5
+      REMOTE_IP: 10.5.0.6
+
+networks:
+  vpcbr:
+    driver: bridge
+    ipam:
+     config:
+       - subnet: 10.5.0.0/16
+         gateway: 10.5.0.1
+         aux_addresses:
+          server: 10.5.0.6
+          client1: 10.5.0.5
